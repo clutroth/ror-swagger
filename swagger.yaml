@@ -30,7 +30,7 @@ paths:
             description: 60 seconds
           very long:
             value: 1d
-            description one day
+            description: one day
           very short:
             value: 100nanos
             description: 100 nanoseconds
