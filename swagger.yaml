@@ -11,7 +11,7 @@ externalDocs:
 servers:
 - url: http://localhost:9200
 paths:
-  /_readonlyrest/admin/config/load
+  /_readonlyrest/admin/config/load:
     get:
       tags:
       - cluster config
