@@ -16,6 +16,13 @@ paths:
       tags:
       - cluster config
       summary: gets ror config from all ror nodes
+      description: |
+       Requested node spreads requests to every node in cluster.
+       Each cluster sends it's config in response.
+       Requested node analises each got confiiguration, and compares with it's own.
+       There are two possible states without errors, or warrnings:
+       - every node with ror returned same configuration from index
+       - every node with ror returned same configuration from file
       operationId: rorClusterConfig
       parameters:
       - name: timeout
@@ -51,21 +58,105 @@ components:
       type: object
       properties:
         config:
-          type: number
-          format: int32
+          $ref: '#/components/schemas/Config'
         warnings:
-          type: object
+          type: array
+          items:
+            $ref: '#/components/schemas/Warning'
         error:
           type: string
           description: If node couldn't produce response, there is error message.
     Warning:
-      type: object
       oneOf:
       - $ref: '#/components/schemas/Warning.NodeReturnedConfigError'
+      - $ref: '#/components/schemas/Warning.NodeReturnedUnknownError'
+      - $ref: '#/components/schemas/Warning.NodeForcedFileConfig'
+      - $ref: '#/components/schemas/Warning.NodeReturnedDifferentConfig'
+      - $ref: '#/components/schemas/Warning.NodeResponseTimeoutWarning'
+      discriminator:
+        propertyName: type
+        mapping:
+          NODE_RETURNED_CONFIG_ERROR: '#/components/schemas/Config.NodeReturnedConfigError'
+          NODE_RETURNED_UNKNOWN_ERROR: '#/components/schemas/Config.NodeReturnedUnknownError'
+          NODE_FORCED_FILE_CONFIG: '#/components/schemas/Config.NodeForcedFileConfig'
+          NODE_RETURNED_DIFFERENT_CONFIG: '#/components/schemas/Config.NodeReturnedDifferentConfig'
+          NODE_RESPONSE_TIMEOUT_ERROR: '#/components/schemas/Config.NodeResponseTimeoutWarning'
     Warning.NodeReturnedConfigError:
       type: object
       properties:
         nodeId:
-          type: string
+          $ref: '#/components/schemas/NodeId'
         error:
           type: string
+      description: Node couldn't load it's configuration, and returned error.
+    Warning.NodeReturnedUnknownError:
+      type: object
+      properties:
+        nodeId:
+          $ref: '#/components/schemas/NodeId'
+        detailedMessage:
+          type: string
+      description: Node got error, when processing your request.
+    Warning.NodeForcedFileConfig:
+      type: object
+      properties:
+        nodeId:
+          $ref: '#/components/schemas/NodeId'
+      description: Node has forced loading configuration from file.
+    Warning.NodeReturnedDifferentConfig:
+      type: object
+      properties:
+        nodeId:
+          $ref: '#/components/schemas/NodeId'
+        loadedConfig:
+          $ref: '#/components/schemas/Config'
+      description: Configuration loaded on this node, differs from current node configuraition.
+    Warning.NodeResponseTimeoutWarning:
+      type: object
+      properties:
+        nodeId:
+          $ref: '#/components/schemas/NodeId'
+    Config:
+      oneOf:
+      - $ref: '#/components/schemas/Config.FileConfig'
+      - $ref: '#/components/schemas/Config.ForcedFileConfig'
+      - $ref: '#/components/schemas/Config.IndexConfig'
+      discriminator:
+        propertyName: type
+        mapping:
+          FILE_CONFIG: '#/components/schemas/Config.FileConfig'
+          FORCED_FILE_CONFIG: '#/components/schemas/Config.ForcedFileConfig'
+          INDEX_CONFIG: '#/components/schemas/Config.IndexConfig'
+    Config.FileConfig:
+      type: object
+      properties:
+        raw:
+          $ref: '#/components/schemas/RawConfiguration'
+      description: Configuration was loaded from file.
+    Config.ForcedFileConfig:
+      type: object
+      properties:
+        raw:
+          $ref: '#/components/schemas/RawConfiguration'
+      description: Configuration was loaded from file, because it was forced.
+    Config.IndexConfig:
+      type: object
+      properties:
+        raw:
+          $ref: '#/components/schemas/RawConfiguration'
+        index:
+          type: string
+    NodeId:
+      type: string
+      description: Node identifier
+      example: abcdefg
+    RawConfiguration:
+      type: string
+      description: Node configuration as string
+      example: |
+        readonlyrest:
+          access_control_rules:
+            - name: "CONTAINER ADMIN - index"
+              verbosity: "error"
+              type: "allow"
+              auth_key: "admin:container"
